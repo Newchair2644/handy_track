@@ -31,6 +31,32 @@ class FaceBehaviourDetector:
                 pass
         return mood
 
+
+class SignLanguageDetection:
+    def __init__(self, model_dir):
+        # Load all cascades from the specified directory
+        self.cascades = {}
+        for letter in ['A', 'B', 'C']:  # Extend this list with all the letters you have cascades for
+            cascade_path = f"{model_dir}/{letter}.xml"
+            self.cascades[letter] = cv2.CascadeClassifier(cascade_path)
+
+    def detect(self, frame):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        detected_letter = None
+        
+        for letter, cascade in self.cascades.items():
+            detections = cascade.detectMultiScale(gray, minNeighbors=9)
+            if len(detections) > 0:  # If any detection is found
+                detected_letter = letter
+                (x, y, w, h) = detections[0]  # Take the first detection
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(frame, letter, (x, y + h), font, 4, (0, 0, 255), 3, cv2.LINE_AA)
+                break  # Exit after first detected letter
+
+        return detected_letter
+
+
 class HandSwipeDetector:
     def __init__(self, velocity_threshold=20, middle_tolerance=50):
         self.prev_x = None
@@ -92,18 +118,20 @@ class HandSwipeDetector:
             return distance
         return None
 
+
 # Main class to handle the application logic
 class HandFaceInteraction:
     def __init__(self):
         self.cap = cv2.VideoCapture(0)
         self.hand_detector = HandSwipeDetector()
         self.face_detector = FaceBehaviourDetector()
+        self.sign_lanuage_detector = SignLanguageDetection('./hand_cascades')
 
     def run(self):
         ret, frame = self.cap.read()
         if not ret:
             print("Error reading from webcam.")
-            return None, None, None
+            return None, None, None, None, None
 
         frame = cv2.flip(frame, 1)
         if self.hand_detector.middle_position is None:
@@ -116,10 +144,14 @@ class HandFaceInteraction:
         # Calculate thumb-index distance
         distance = self.hand_detector.calculate_thumb_index_distance(landmarkList, frame)
 
+        # Sign Language Detection
+        letter = self.sign_lanuage_detector.detect(frame)
+
         # Face Detection
         mood = self.face_detector.detect_and_predict(frame)
 
-        return swipe_result, distance, mood, frame
+
+        return swipe_result, distance, mood, letter, frame
 
     def release(self):
         self.cap.release()
@@ -130,7 +162,7 @@ if __name__ == "__main__":
     app = HandFaceInteraction()
 
     while True:
-        swipe_result, distance, mood, frame = app.run()
+        swipe_result, distance, mood, letter, frame = app.run()
 
         # Check if data was successfully processed
         if frame is None:
