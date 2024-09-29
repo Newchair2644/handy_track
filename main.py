@@ -125,6 +125,7 @@ class HandFaceInteraction:
         self.cap.release()
         cv2.destroyAllWindows()
 
+
 if __name__ == "__main__":
     app = HandFaceInteraction()
 
@@ -135,17 +136,23 @@ if __name__ == "__main__":
         if frame is None:
             break
 
-        # Print the detected values (left/right swipe, distance, and mood)
+        # Prepare text to display
+        overlay_text = []
+
         if swipe_result == "left":
             print("Left detected!")
         elif swipe_result == "right":
             print("Right detected!")
 
         if distance is not None:
-            print(f"Distance between thumb and index finger: {distance:.2f}")
+            overlay_text.append(f"Distance: {distance:.2f}")
 
         if mood != "Unknown":
-            print(f"Mood detected: {mood}")
+            overlay_text.append(f"Mood: {mood}")
+
+        # Overlay text on the frame
+        for i, text in enumerate(overlay_text):
+            cv2.putText(frame, text, (10, 30 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
         cv2.imshow('Image', frame)
 
